@@ -39,30 +39,36 @@ class GetInItScraper:
         options = webdriver.ChromeOptions()
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
-        # Browser öffnen
         driver = webdriver.Chrome(options=options)
 
-        # Webseite öffnen
         driver.get(self.url)
 
+        self.declineCookies(driver)
+        self.pressShowMore(driver)
+
+        html_content = driver.page_source
+
+        driver.quit()
+
+        return html_content
+
+    def declineCookies(self, webdriver):
         try:
 
-            # Finde den Button zum Ablehnen optionaler Cookies im Popup
-            reject_cookies_button = WebDriverWait(driver, 10).until(
+            reject_cookies_button = WebDriverWait(webdriver, 10).until(
                 EC.element_to_be_clickable(
                     (By.XPATH, "//button[@data-cy='cookieRejectOptional']")
                 )
             )
 
-            # Klicke auf den Button zum Ablehnen optionaler Cookies
             reject_cookies_button.click()
         except (NoSuchElementException, TimeoutException):
             print("Cookie-Popup oder Ablehnungsbutton nicht gefunden.")
 
-        # Versuche, den Button zu klicken, bis er nicht mehr vorhanden ist oder eine Timeout-Exception auftritt
+    def pressShowMore(self, webdriver):
         while True:
             try:
-                mehr_anzeigen_button = WebDriverWait(driver, 20).until(
+                mehr_anzeigen_button = WebDriverWait(webdriver, 20).until(
                     EC.presence_of_element_located(
                         (By.XPATH, "//button[@data-cy='showMore']")
                     )
@@ -74,11 +80,3 @@ class GetInItScraper:
             except TimeoutException:
                 print("Timeout beim Warten auf den Button.")
                 break
-
-        # Extrahiere den HTML-Inhalt der vollständig geladenen Seite
-        html_content = driver.page_source
-
-        # Schließe den Browser
-        driver.quit()
-
-        return html_content
