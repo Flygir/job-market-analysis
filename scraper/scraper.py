@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 from data_objects import Job
 from selenium import webdriver
+from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -33,7 +34,7 @@ class GetInItScraper:
 
     def scrape_jobs(self) -> None:
         options = webdriver.ChromeOptions()
-        options.add_argument("--start-fullscreen")
+        # options.add_argument("--start-fullscreen")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
         driver = webdriver.Chrome(options=options)
@@ -43,28 +44,55 @@ class GetInItScraper:
 
         for job_url in self.job_urls:
             driver.get(job_url)
-            self.pressShowMore(driver)
-            self.save_jobs(driver.page_source)
+            # self.pressShowMore(driver)
+            job_cards = self.find_job_cards(driver)
+
+            for job_card in job_cards:
+                job_card.click()
+                driver.switch_to.window(driver.window_handles[-1])
+                driver.current_url
+                self.save_jobs(driver.page_source)
+                driver.close()
+                driver.switch_to.window(driver.window_handles[0])
+                driver.current_url
 
         driver.quit()
 
     def save_jobs(self, html: str) -> None:
         soup = BeautifulSoup(html, "html.parser")
-        job_search = soup.find("main", class_="jobsuche")
-        job_overview = job_search.findNext("div", class_="row")
-        job_cards = job_overview.findAll(
-            "div", class_="col-12 col-lg-6 col-xl-4 mb-1-5"
-        )
 
-        for job_card in job_cards:
-            company_name = job_card.findNext(
-                "div",
-                class_="my-0-5 font-size-15 font-weight-bold no-overflow text-color-default",
-            ).text
-            job_description = job_card.findNext(
-                "div", class_="CardJob_jobTitle__9UY_h"
-            ).text
-            self.jobs.append(Job(company_name, job_description))
+        company_name = soup.find(
+            "p",
+            class_="JobHeaderRegular_companyTitle__Q1svI",
+        ).text
+        job_description = soup.find(
+            "h1", class_="JobHeaderRegular_jobTitle__DS4V4"
+        ).text
+        job_location = soup.find(
+            "div", class_="JobHeaderRegular_jobLocation__MFauy"
+        ).text
+        job_home_office = soup.find("div", class_="JobHeaderRegular_homeOffice__zVhgn")
+        if not job_home_office:
+            job_home_office = "kein Home-Office"
+        else:
+            job_home_office = job_home_office.text
+        job_badges = soup.find_all("div", class_="JobHeaderRegular_jobBadge__58OzR")
+        job_badges_names = []
+
+        for job_badge in job_badges:
+            job_badges_names.append(job_badge.text)
+
+        print(
+            company_name,
+            "\n",
+            job_description,
+            "\n",
+            job_location,
+            "\n",
+            job_home_office,
+            "\n",
+            job_badges_names,
+        )
 
     def declineCookies(self, webdriver: webdriver.Chrome) -> None:
         try:
@@ -77,6 +105,16 @@ class GetInItScraper:
             reject_cookies_button.click()
         except (NoSuchElementException, TimeoutException):
             print("Cookie-Popup oder Ablehnungsbutton nicht gefunden.")
+
+    def find_job_cards(self, webdriver: webdriver.Chrome) -> list[WebElement]:
+        WebDriverWait(webdriver, 10).until(
+            EC.presence_of_all_elements_located(
+                (By.CSS_SELECTOR, "div.col-12.col-lg-6.col-xl-4.mb-1-5")
+            )
+        )
+        return webdriver.find_elements(
+            By.CSS_SELECTOR, "div.col-12.col-lg-6.col-xl-4.mb-1-5"
+        )
 
     def pressShowMore(self, webdriver: webdriver.Chrome) -> None:
         while True:
