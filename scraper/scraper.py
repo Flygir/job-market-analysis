@@ -40,25 +40,25 @@ class GetInItScraper:
         driver = webdriver.Chrome(options=options)
         driver.get(self.url)
 
-        self.declineCookies(driver)
+        self._decline_cookies(driver)
 
         for job_url in self.job_urls:
             driver.get(job_url)
-            # self.pressShowMore(driver)
-            job_cards = self.find_job_cards(driver)
+            self.pressShowMore(driver)
+            job_cards = self._find_job_cards(driver)
 
             for job_card in job_cards:
                 job_card.click()
                 driver.switch_to.window(driver.window_handles[-1])
                 driver.current_url
-                self.save_jobs(driver.page_source)
+                self._save_jobs(driver.page_source)
                 driver.close()
                 driver.switch_to.window(driver.window_handles[0])
                 driver.current_url
 
         driver.quit()
 
-    def save_jobs(self, html: str) -> None:
+    def _save_jobs(self, html: str) -> None:
         soup = BeautifulSoup(html, "html.parser")
 
         company_name = soup.find(
@@ -71,30 +71,31 @@ class GetInItScraper:
         job_location = soup.find(
             "div", class_="JobHeaderRegular_jobLocation__MFauy"
         ).text
+        job_location = job_location.split(",")
+
         job_home_office = soup.find("div", class_="JobHeaderRegular_homeOffice__zVhgn")
         if not job_home_office:
-            job_home_office = "kein Home-Office"
+            job_home_office = False
         else:
-            job_home_office = job_home_office.text
+            job_home_office = True
+
         job_badges = soup.find_all("div", class_="JobHeaderRegular_jobBadge__58OzR")
-        job_badges_names = []
+        job_badges_names = [str]
 
         for job_badge in job_badges:
             job_badges_names.append(job_badge.text)
 
-        print(
-            company_name,
-            "\n",
-            job_description,
-            "\n",
-            job_location,
-            "\n",
-            job_home_office,
-            "\n",
-            job_badges_names,
+        self.jobs.append(
+            Job(
+                company_name,
+                job_description,
+                job_location,
+                job_home_office,
+                job_badges_names,
+            )
         )
 
-    def declineCookies(self, webdriver: webdriver.Chrome) -> None:
+    def _decline_cookies(self, webdriver: webdriver.Chrome) -> None:
         try:
             reject_cookies_button = WebDriverWait(webdriver, 10).until(
                 EC.element_to_be_clickable(
@@ -106,7 +107,7 @@ class GetInItScraper:
         except (NoSuchElementException, TimeoutException):
             print("Cookie-Popup oder Ablehnungsbutton nicht gefunden.")
 
-    def find_job_cards(self, webdriver: webdriver.Chrome) -> list[WebElement]:
+    def _find_job_cards(self, webdriver: webdriver.Chrome) -> list[WebElement]:
         WebDriverWait(webdriver, 10).until(
             EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, "div.col-12.col-lg-6.col-xl-4.mb-1-5")
@@ -116,7 +117,7 @@ class GetInItScraper:
             By.CSS_SELECTOR, "div.col-12.col-lg-6.col-xl-4.mb-1-5"
         )
 
-    def pressShowMore(self, webdriver: webdriver.Chrome) -> None:
+    def _press_show_more(self, webdriver: webdriver.Chrome) -> None:
         while True:
             try:
                 mehr_anzeigen_button = WebDriverWait(webdriver, 20).until(
