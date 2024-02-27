@@ -10,7 +10,7 @@ Base = declarative_base()
 class DatabaseHandler:
     def __init__(self, connection_string: str) -> None:
         self.engine = create_engine(connection_string)
-        Base.metadata.create_all(self.engine)
+        JobModel.metadata.create_all(self.engine, checkfirst=True)
         self.Session = sessionmaker(bind=self.engine)
 
     def add_job(self, job: Job) -> None:

@@ -1,4 +1,7 @@
 from scraper import GetInItScraper
+from handler import DatabaseHandler
 
-scraper = GetInItScraper()
-scraper.scrape_jobs_parallel()
+
+connection_string = "postgresql://job-analysis:1234@localhost:5432/job-analysis"
+scraper = GetInItScraper(DatabaseHandler(connection_string))
+scraper.scrape_jobs()

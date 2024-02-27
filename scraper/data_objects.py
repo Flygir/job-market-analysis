@@ -1,4 +1,4 @@
-from sqlalchemy import ARRAY, Boolean, Column, String
+from sqlalchemy import ARRAY, INTEGER, Boolean, Column, String
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -23,7 +23,7 @@ class Job:
 class JobModel(Base):
     __tablename__ = "jobs"
 
-    id = Column(String, primary_key=True)
+    id = Column(INTEGER, primary_key=True, autoincrement=True)
     company = Column(String)
     description = Column(String)
     locations = Column(ARRAY(String))

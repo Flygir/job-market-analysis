@@ -5,7 +5,8 @@ services:
     image: postgres
     container_name: job-market-analysis-db
     environment:
-      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_USER: job-analysis
     volumes:
       - ../postgres_data:/var/lib/postgresql/data
     ports:
