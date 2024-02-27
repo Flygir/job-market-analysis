@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 import requests
 from data_objects import Job
@@ -57,6 +58,17 @@ class GetInItScraper:
                 driver.current_url
 
         driver.quit()
+
+    def scrape_jobs_parallel(self, max_workers: int = 4) -> None:
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(self._scrape_jobs_for_url, job_url)
+                for job_url in self.job_urls
+            ]
+
+            for future in futures:
+                future.result()
 
     def _save_jobs(self, html: str) -> None:
         soup = BeautifulSoup(html, "html.parser")
@@ -132,3 +144,26 @@ class GetInItScraper:
             except TimeoutException:
                 print("Timeout beim Warten auf den Button.")
                 break
+
+    def _scrape_jobs_for_url(self, job_url: str) -> None:
+        options = webdriver.ChromeOptions()
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
+
+        driver = webdriver.Chrome(options=options)
+        driver.get(job_url)
+
+        self._decline_cookies(driver)
+        self._press_show_more(driver)
+
+        job_cards = self._find_job_cards(driver)
+
+        for job_card in job_cards:
+            job_card.click()
+            driver.switch_to.window(driver.window_handles[-1])
+            driver.current_url
+            self._save_jobs(driver.page_source)
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
+            driver.current_url
+
+        driver.quit()
