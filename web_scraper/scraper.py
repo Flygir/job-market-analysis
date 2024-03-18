@@ -59,7 +59,7 @@ class GetInItScraper:
 
         for job_url in self.job_urls:
             driver.get(job_url)
-            # self._press_show_more(driver)
+            self._press_show_more(driver)
             job_cards = self._find_job_cards(driver)
 
             for job_card in job_cards:
@@ -73,16 +73,34 @@ class GetInItScraper:
 
         driver.quit()
 
-    def scrape_jobs_parallel(self, max_workers: int = 4) -> None:
-        self.max_workers = max_workers
+    def scrape_jobs_parallel(self, max_workers: int = 4):
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for job_url in self.job_urls:
+                future = executor.submit(self._scrape_job_url, job_url)
+                futures.append(future)
 
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = [
-                executor.submit(self._scrape_jobs_for_url, job_url)
-                for job_url in self.job_urls
-            ]
-            for future in as_completed(futures):
-                future.result()
+    def _scrape_job_url(self, job_url: str) -> None:
+        options = webdriver.ChromeOptions()
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
+
+        driver = webdriver.Chrome(options=options)
+        driver.get(job_url)
+
+        self._decline_cookies(driver)
+        self._press_show_more(driver)
+        job_cards = self._find_job_cards(driver)
+
+        for job_card in job_cards:
+            job_card.click()
+            driver.switch_to.window(driver.window_handles[-1])
+            driver.current_url
+            self._save_jobs(driver.page_source)
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
+            driver.current_url
+
+        driver.quit()
 
     def _save_jobs(self, html: str) -> None:
         soup = BeautifulSoup(html, "html.parser")
@@ -158,37 +176,3 @@ class GetInItScraper:
             except TimeoutException:
                 print("Timeout beim Warten auf den Button.")
                 break
-
-    def _scrape_jobs_for_url(self, job_url: str) -> None:
-        driver = self._get_driver()
-        try:
-            driver.get(job_url)
-            self._decline_cookies(driver)
-            self._press_show_more(driver)
-            job_cards = self._find_job_cards(driver)
-            for job_card in job_cards:
-                job_card.click()
-                driver.switch_to.window(driver.window_handles[-1])
-                self._save_jobs(driver.page_source)
-                driver.close()
-                driver.switch_to.window(driver.window_handles[0])
-        finally:
-            self._return_driver(driver)
-
-    def _get_driver(self) -> webdriver.Chrome:
-        with self.driver_pool_lock:
-            if self.driver_pool:
-                return self.driver_pool.pop()
-            elif len(self.driver_pool) < self.max_workers:
-                options = webdriver.ChromeOptions()
-                options.add_experimental_option("excludeSwitches", ["enable-logging"])
-                return webdriver.Chrome(options=options)
-            else:
-                raise RuntimeError("Maximum number of drivers reached")
-
-    def _return_driver(self, driver: webdriver.Chrome) -> None:
-        with self.driver_pool_lock:
-            if len(self.driver_pool) < self.max_workers:
-                self.driver_pool.append(driver)
-            else:
-                driver.quit()
