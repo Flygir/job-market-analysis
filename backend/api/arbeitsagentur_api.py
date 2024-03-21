@@ -1,4 +1,4 @@
-import requests, json, math, csv
+import requests, json, math
 
 
 class ArbeitsagenturAPI:
@@ -12,7 +12,27 @@ class ArbeitsagenturAPI:
         response = requests.get(self.url, headers=self.auth_header, params=param)
         return response.json()["maxErgebnisse"]
 
-    def get_jobs_by_company(self, company: str) -> str:
+    def get_companies(self) -> dict:
+        param = {"size": 1}
+        response = requests.get(self.url, headers=self.auth_header, params=param)
+        return response.json()["facetten"]["arbeitgeber"]["counts"]
+
+    def get_cities(self) -> dict:
+        param = {"size": 1}
+        response = requests.get(self.url, headers=self.auth_header, params=param)
+        return response.json()["facetten"]["arbeitsort"]["counts"]
+
+    def get_occupational_field(self) -> dict:
+        param = {"size": 1}
+        response = requests.get(self.url, headers=self.auth_header, params=param)
+        return response.json()["facetten"]["berufsfeld"]["counts"]
+
+    def get_occupation(self) -> dict:
+        param = {"size": 1}
+        response = requests.get(self.url, headers=self.auth_header, params=param)
+        return response.json()["facetten"]["beruf"]["counts"]
+
+    def get_jobs_by_company(self, company: str) -> list:
         entry_count = self.get_entry_count({"arbeitgeber": company})
         page = 1
         all_jobs = []
@@ -39,4 +59,7 @@ class ArbeitsagenturAPI:
 
 agentur = ArbeitsagenturAPI()
 
-print(agentur.get_entry_count({"berufsfeld": "Informatik"}))
+response = requests.get(agentur.url, headers=agentur.auth_header)
+
+with open("response.json", "w") as file:
+    file.write(json.dumps(response.json(), indent=4))
